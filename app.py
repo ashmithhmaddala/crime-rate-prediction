@@ -1,164 +1,114 @@
-import streamlit as st
+from flask import Flask, render_template, request, jsonify, redirect, url_for, session
+import sqlite3
+import numpy as np
 import pandas as pd
-import matplotlib.pyplot as plt
-import seaborn as sns
-from joblib import load
+import joblib
+from tensorflow.keras.models import load_model
 import os
-import folium
-from streamlit_folium import st_folium
 
-st.set_page_config(page_title="Theft Classification Dashboard", layout="wide")
 
-# Load data and model
-raw_df = pd.read_csv("hard_theft_classification_dataset.csv")
-model = load("xgboost_model.pkl")
+app = Flask(__name__)
+app.secret_key = "osmoCrime@2024_!secure"
+
+# Load ML model and scaler
+model = load_model("cnn_model.h5")
+scaler = joblib.load("scaler.save")
 model_features = pd.read_csv("model_features.csv", header=None).squeeze().tolist()
 if isinstance(model_features, str):
     model_features = [model_features]
 
-# Load accuracy if available
-if os.path.exists("model_accuracy.txt"):
-    with open("model_accuracy.txt", "r") as f:
-        accuracy = float(f.read())
-    accuracy_str = f"Model Accuracy on Test Data: {accuracy:.2%}"
-else:
-    accuracy_str = "Model Accuracy: Not available. Please retrain the model."
 
-# Sidebar navigation
-st.sidebar.title("Navigation")
-section = st.sidebar.radio("Go to", ["Data Overview", "Crime Analysis", "Map", "Prediction", "About"])
+@app.route("/")
+def index():
+    return render_template("index.html")
 
-if section == "Data Overview":
-    st.title("Dataset Overview")
-    with st.expander("See a sample of the dataset"):
-        st.dataframe(raw_df.head())
-    st.subheader("Basic Statistics")
-    st.write(f"Total records: {len(raw_df)}")
-    st.write(f"Date range: {raw_df['Date'].min()} to {raw_df['Date'].max()}")
-    st.write(f"Number of crime types: {raw_df['Crime Type'].nunique()}")
-
-elif section == "Crime Analysis":
-    st.title("Crime Analysis")
-    raw_df['Date'] = pd.to_datetime(raw_df['Date'])
-    st.subheader("Crime Trend Over Time")
-    monthly_counts = raw_df.groupby(raw_df['Date'].dt.to_period('M')).size()
-    fig, ax = plt.subplots(figsize=(10, 6))
-    monthly_counts.plot(ax=ax)
-    plt.xlabel("Month")
-    plt.ylabel("Number of Crimes")
-    plt.title("Monthly Crime Count in Bengaluru")
-    st.pyplot(fig)
-    st.subheader("Crime Type Distribution")
-    crime_counts = raw_df['Crime Type'].value_counts()
-    fig, ax = plt.subplots(figsize=(10, 6))
-    sns.barplot(x=crime_counts.values, y=crime_counts.index, ax=ax)
-    plt.xlabel("Number of Cases")
-    plt.title("Crime Types in Bengaluru")
-    st.pyplot(fig)
-    st.subheader("Crimes by Area")
-    area_counts = raw_df['Area'].value_counts()
-    st.bar_chart(area_counts)
-
-elif section == "Map":
-    st.title("Crime Map of Bengaluru")
-    st.markdown("Showing locations of recent crimes (red: Theft, blue: Not Theft).")
-    # Filter to last 200 records for speed
-    map_df = raw_df.tail(200).copy()
-    m = folium.Map(location=[12.9716, 77.5946], zoom_start=12)
-    for _, row in map_df.iterrows():
-        color = "red" if row["Is_Theft"] == 1 else "blue"
-        folium.CircleMarker(
-            location=[row["Latitude"], row["Longitude"]],
-            radius=5,
-            color=color,
-            fill=True,
-            fill_opacity=0.7,
-            popup=f"{row['Crime Type']} ({row['Area']})",
-        ).add_to(m)
-    st_folium(m, width=800, height=500)
-
-elif section == "Prediction":
-    st.title("Theft Prediction")
-    st.info(accuracy_str)
-    col1, col2 = st.columns(2)
-    with col1:
-        temperature = st.slider("Temperature (°C)", float(raw_df['Temperature'].min()), float(raw_df['Temperature'].max()), float(raw_df['Temperature'].mean()))
-        rainfall = st.slider("Rainfall (mm)", float(raw_df['Rainfall'].min()), float(raw_df['Rainfall'].max()), float(raw_df['Rainfall'].mean()))
-        severity = st.selectbox("Crime Severity", sorted(raw_df['Crime Severity'].dropna().unique()))
-        reported = st.selectbox("Reported", sorted(raw_df['Reported'].dropna().unique()))
-        if 'HighSeverityCrime' in raw_df.columns:
-            high_sev = st.selectbox("High Severity Crime", sorted(raw_df['HighSeverityCrime'].dropna().unique()))
-        else:
-            high_sev = 0
-    with col2:
-        response_time = st.slider("Police Response Time (minutes)", float(raw_df['Police Response Time'].min()), float(raw_df['Police Response Time'].max()), float(raw_df['Police Response Time'].mean()))
-        time_of_day = st.selectbox("Time of Day", sorted(raw_df['Time of Day'].dropna().unique()))
-        socio_zone = st.selectbox("Socioeconomic Zone", sorted(raw_df['Socioeconomic Zone'].dropna().unique()))
-        area = st.selectbox("Area", sorted(raw_df['Area'].dropna().unique()))
+@app.route("/predict", methods=["POST"])
+def predict():
+    data = request.get_json()
 
     input_dict = {
-        'Temperature': temperature,
-        'Rainfall': rainfall,
-        'Crime Severity': {'Low': 0, 'Moderate': 1, 'High': 2}[severity] if isinstance(severity, str) else severity,
-        'Reported': 1 if (reported == 'Yes' or reported == 1) else 0,
-        'Police Response Time': response_time,
-        'HighSeverityCrime': high_sev
+        'Temperature': data['temperature'],
+        'Rainfall': data['rainfall'],
+        'Crime Severity': {'Low': 0, 'Moderate': 1, 'High': 2}[data['severity']],
+        'Reported': 1 if data['reported'] == 'Yes' else 0,
+        'Police Response Time': data['response_time'],
     }
-    # One-hot for Time of Day
-    for tod in sorted(raw_df['Time of Day'].dropna().unique()):
-        col_name = f'Time of Day_{tod}'
-        if col_name in model_features:
-            input_dict[col_name] = 1 if time_of_day == tod else 0
-    # Socioeconomic Zone
-    for zone in sorted(raw_df['Socioeconomic Zone'].dropna().unique()):
-        col_name = f'Socioeconomic Zone_{zone}'
-        if col_name in model_features:
-            input_dict[col_name] = 1 if socio_zone == zone else 0
-    # Area
-    for a in sorted(raw_df['Area'].dropna().unique()):
-        col_name = f'Area_{a}'
-        if col_name in model_features:
-            input_dict[col_name] = 1 if area == a else 0
-    # Crime Type (all 0, since we're predicting Theft)
-    for crime in raw_df['Crime Type'].dropna().unique():
-        col_name = f'Crime Type_{crime}'
-        if col_name in model_features:
-            input_dict[col_name] = 0
+
+    # Add one-hot encoded features
+    for prefix, value in [
+        ('Time of Day', data['time_of_day']),
+        ('Socioeconomic Zone', data['socio_zone']),
+        ('Area', data['area'])
+    ]:
+        for feature in model_features:
+            if feature.startswith(f"{prefix}_"):
+                input_dict[feature] = 1 if feature == f"{prefix}_{value}" else 0
+
+    # Ensure all features are present
+    for feature in model_features:
+        if feature not in input_dict:
+            input_dict[feature] = 0
 
     input_df = pd.DataFrame([input_dict])
-    for feature in model_features:
-        if feature not in input_df.columns:
-            input_df[feature] = 0
     input_df = input_df[model_features]
 
-    if st.button("Predict Theft"):
-        prediction = model.predict(input_df)[0]
-        proba = model.predict_proba(input_df)[0]
-        if prediction == 1:
-            st.success("✅ Prediction: THEFT")
-            st.markdown(f"<span style='color:green;font-size:22px;font-weight:bold;'>Probability of theft: {proba[1]*100:.2f}%</span>", unsafe_allow_html=True)
-            st.markdown(f"<span style='color:gray;'>Probability of not theft: {proba[0]*100:.2f}%</span>", unsafe_allow_html=True)
+    # Scale and reshape input
+    scaled = scaler.transform(input_df)
+    reshaped = np.expand_dims(scaled, axis=2)
+
+    # Predict
+    prob = model.predict(reshaped)[0][0]
+    prediction = "High Risk of Crime" if prob > 0.5 else "Relatively Safe"
+
+    return jsonify({
+        "prediction": prediction,
+        "probability": round(prob * 100, 2)
+    })
+
+@app.route("/login", methods=["GET", "POST"])
+def login():
+    if request.method == "POST":
+        email = request.form["email"]
+        password = request.form["password"]
+
+        conn = sqlite3.connect("users.db")
+        cur = conn.cursor()
+        cur.execute("SELECT * FROM users WHERE email=? AND password=?", (email, password))
+        user = cur.fetchone()
+        conn.close()
+
+        if user:
+            session["user_id"] = user[0]
+            session["role"] = user[3]
+            if user[3] == "admin":
+                return redirect(url_for("admin_dashboard"))
+            else:
+                return redirect(url_for("user_dashboard"))
         else:
-            st.error("🚨 Prediction: NOT THEFT")
-            st.markdown(f"<span style='color:red;font-size:22px;font-weight:bold;'>Probability of theft: {proba[1]*100:.2f}%</span>", unsafe_allow_html=True)
-            st.markdown(f"<span style='color:green;'>Probability of not theft: {proba[0]*100:.2f}%</span>", unsafe_allow_html=True)
+            return render_template("login.html", error="Invalid credentials")
 
-        with st.expander("ℹ️ What does this mean?"):
-            st.write("""
-            - **THEFT:** The model predicts this case is likely a theft.
-            - **NOT THEFT:** The model predicts this case is likely another crime type.
-            - Probabilities show the model's confidence in its prediction.
-            """)
+    return render_template("login.html")
 
-elif section == "About":
-    st.title("About This Project")
-    st.write("""
-    This project demonstrates how machine learning can be used to predict thefts and analyze crime patterns.
-    - Interactive crime trend visualization
-    - Machine learning model to classify theft crimes
-    - Area-based analysis and prediction
-    - Interactive crime map of Bengaluru
-    - Created by: Your Name
-    """)
-    st.markdown("---")
-    st.markdown("© 2025 Theft Classification System | Created for educational purposes")
+
+@app.route("/dashboard")
+def user_dashboard():
+    if "user_id" not in session or session.get("role") != "user":
+        return redirect(url_for("login"))
+    return render_template("dashboard_user.html", role="user")
+
+
+@app.route("/admin")
+def admin_dashboard():
+    if "user_id" not in session or session.get("role") != "admin":
+        return redirect(url_for("login"))
+    return render_template("dashboard_admin.html", role="admin")
+
+
+@app.route("/logout")
+def logout():
+    session.clear()
+    return redirect(url_for("login"))
+
+
+if __name__ == "__main__":
+    app.run(debug=True)

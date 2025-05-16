@@ -1,0 +1,79 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Bengaluru Crime Predictor</title>
+  <link rel="stylesheet" href="/static/styles.css" />
+</head>
+<body>
+  <div class="form-wrapper">
+    <h1 class="form-title">Bengaluru Crime Prediction</h1>
+    <form id="predictForm" class="form-grid">
+      <div class="form-group">
+        <label for="temperature">Temperature (°C)<span>*</span></label>
+        <input type="number" id="temperature" name="temperature" placeholder="Enter temperature" required />
+      </div>
+      <div class="form-group">
+        <label for="rainfall">Rainfall (mm)<span>*</span></label>
+        <input type="number" id="rainfall" name="rainfall" placeholder="Enter rainfall" required />
+      </div>
+      <div class="form-group">
+        <label for="severity">Crime Severity<span>*</span></label>
+        <select id="severity" name="severity" required>
+          <option value="">Select severity</option>
+          <option value="Low">Low</option>
+          <option value="Moderate">Moderate</option>
+          <option value="High">High</option>
+        </select>
+      </div>
+      <div class="form-group">
+        <label for="reported">Reported<span>*</span></label>
+        <select id="reported" name="reported" required>
+          <option value="">Select option</option>
+          <option value="Yes">Yes</option>
+          <option value="No">No</option>
+        </select>
+      </div>
+      <div class="form-group">
+        <label for="response_time">Police Response Time (min)<span>*</span></label>
+        <input type="number" id="response_time" name="response_time" placeholder="In minutes" required />
+      </div>
+      <div class="form-group">
+        <label for="time_of_day">Time of Day<span>*</span></label>
+        <select id="time_of_day" name="time_of_day" required>
+          <option value="">Select time</option>
+          <option value="Morning">Morning</option>
+          <option value="Afternoon">Afternoon</option>
+          <option value="Evening">Evening</option>
+          <option value="Night">Night</option>
+        </select>
+      </div>
+      <div class="form-group">
+        <label for="socio_zone">Socioeconomic Zone<span>*</span></label>
+        <select id="socio_zone" name="socio_zone" required>
+          <option value="">Select zone</option>
+          <option value="Zone A">Zone A</option>
+          <option value="Zone B">Zone B</option>
+          <option value="Zone C">Zone C</option>
+        </select>
+      </div>
+      <div class="form-group">
+        <label for="area">Area<span>*</span></label>
+        <select id="area" name="area" required>
+          <option value="">Select area</option>
+          <option value="Koramangala">Koramangala</option>
+          <option value="Whitefield">Whitefield</option>
+          <option value="Indiranagar">Indiranagar</option>
+        </select>
+      </div>
+      <div class="form-group full-width">
+        <button type="submit" class="submit-btn">Predict</button>
+      </div>
+    </form>
+    <div id="result" class="result-box"></div>
+  </div>
+
+  <script src="/static/script.js"></script>
+</body>
+</html>
