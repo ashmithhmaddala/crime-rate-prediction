@@ -1,0 +1,115 @@
+/* General Reset */
+* {
+  margin: 0;
+  padding: 0;
+  box-sizing: border-box;
+}
+
+body {
+  background: #f3f2f0;
+  font-family: 'Segoe UI', sans-serif;
+  color: #1a1a1a;
+  display: flex;
+  justify-content: center;
+  align-items: flex-start;
+  min-height: 100vh;
+  padding: 2rem;
+}
+
+/* Wrapper */
+.form-wrapper {
+  background: #fff;
+  padding: 2.5rem 3rem;
+  border-radius: 12px;
+  box-shadow: 0 10px 40px rgba(0, 0, 0, 0.07);
+  max-width: 860px;
+  width: 100%;
+}
+
+/* Title */
+.form-title {
+  font-size: 1.8rem;
+  margin-bottom: 2rem;
+  font-weight: 600;
+  color: #111;
+}
+
+/* Grid Layout */
+.form-grid {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 1.5rem 2rem;
+}
+
+.full-width {
+  grid-column: 1 / -1;
+}
+
+/* Labels */
+label {
+  display: block;
+  font-weight: 500;
+  font-size: 0.95rem;
+  margin-bottom: 0.5rem;
+}
+
+label span {
+  color: #ff4c24;
+  margin-left: 4px;
+}
+
+/* Inputs & Selects */
+input[type="text"],
+input[type="number"],
+select {
+  width: 100%;
+  padding: 0.75rem 1rem;
+  font-size: 1rem;
+  border-radius: 8px;
+  border: 1px solid #e0dedc;
+  background: #f9f9f8;
+  transition: 0.3s border, 0.3s box-shadow;
+}
+
+input:focus,
+select:focus {
+  border-color: #aaa;
+  outline: none;
+  box-shadow: 0 0 0 3px rgba(0, 0, 0, 0.06);
+}
+
+/* Button */
+.submit-btn {
+  background: #131313;
+  color: #fff;
+  border: none;
+  padding: 1rem 1.5rem;
+  border-radius: 8px;
+  font-size: 1.05rem;
+  font-weight: 500;
+  cursor: pointer;
+  transition: background 0.2s ease;
+}
+
+.submit-btn:hover {
+  background: #000;
+}
+
+/* Result Output */
+.result-box {
+  margin-top: 2rem;
+  font-size: 1.1rem;
+  font-weight: 500;
+  color: #333;
+}
+
+/* Responsive */
+@media screen and (max-width: 768px) {
+  .form-grid {
+    grid-template-columns: 1fr;
+  }
+
+  .form-wrapper {
+    padding: 2rem;
+  }
+}
